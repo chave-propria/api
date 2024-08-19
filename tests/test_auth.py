@@ -62,10 +62,34 @@ def test_token_deve_retornar_erro_quanto_senha_nao_existir(
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_refresh_token(client: TestClient, get_token):
+def test_refresh_token(client: TestClient, get_token: str):
     response = client.post(
         '/auth/refresh_token', headers={'Authorization': f'Bearer {get_token}'}
     )
 
     assert response.status_code == HTTPStatus.OK
     assert 'access_token' in response.json()
+
+
+def test_refresh_token_deve_retornar_erro_se_token_ja_tiver_expirado(
+    client: TestClient, user: User
+):
+    with freeze_time('2024-09-17 12:00:00'):
+        # realiza a criação to token às 12h00
+        response = client.post(
+            '/auth/token',
+            data={'username': user.username, 'password': user.clean_password},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert 'access_token' in response.json()
+
+    with freeze_time('2024-09-17 12:31:00'):
+        # realiza o refresh do token 31 minutos após a criação
+        token = response.json()['access_token']
+
+        refresh_token = client.post(
+            '/auth/refresh_token', headers={'Authorization': f'Bearer {token}'}
+        )
+
+        assert refresh_token.status_code == HTTPStatus.UNAUTHORIZED
