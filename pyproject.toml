@@ -1,0 +1,48 @@
+[tool.poetry]
+name = "chave-propria"
+version = "0.0.0"
+description = ""
+authors = ["pedro <contato0113@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11.9"
+fastapi = {extras = ["standard"], version = "^0.112.0"}
+pydantic-settings = "^2.4.0"
+sqlalchemy = "^2.0.32"
+alembic = "^1.13.2"
+pwdlib = {extras = ["argon2"], version = "^0.2.0"}
+python-multipart = "^0.0.9"
+pyjwt = "^2.9.0"
+
+
+[tool.poetry.group.dev.dependencies]
+taskipy = "^1.13.0"
+blue = "^0.9.1"
+isort = "^5.13.2"
+pytest = "^8.3.2"
+coverage = "^7.6.1"
+pytest-cov = "^5.0.0"
+factory-boy = "^3.3.1"
+freezegun = "^1.5.1"
+
+[tool.isort]
+profile = "black"
+line_length = 79
+skip = ['migrations', '.venv']
+
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = "--doctest-modules --ignore=migrations"
+
+[tool.taskipy.tasks]
+lint = "blue --check --diff --extend-exclude=migrations/* . && isort --check --diff ."
+run = "fastapi dev chave_propria/api/remetente.py"
+
+pre_test = "task lint"
+test = "pytest -s -x --cov=chave_propria -vv"
+post_test = "coverage html"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
