@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
@@ -27,6 +27,7 @@ T_User = Annotated[User, Depends(get_current_user)]
 def login_for_access_token(
     form: T_OAuth2Form,
     session: T_Session,
+    response: Response,
 ):
     user = session.scalar(select(User).where(User.username == form.username))
 
@@ -40,6 +41,14 @@ def login_for_access_token(
         )
 
     access_token = create_access_token(jwt_claims={'sub': user.username})
+
+    # TODO: VERIFICAR PARA ADICIONAR COOKIE COM TOKEN JWT   
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+    )
+
     return {'access_token': access_token, 'token_type': 'Bearer'}
 
 

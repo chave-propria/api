@@ -37,7 +37,7 @@ addopts = "--doctest-modules --ignore=migrations"
 
 [tool.taskipy.tasks]
 lint = "blue --check --diff --extend-exclude=migrations/* . && isort --check --diff ."
-run = "fastapi dev chave_propria/api/remetente.py"
+run = "fastapi dev chave_propria/api/remetente.py --host=0.0.0.0"
 
 pre_test = "task lint"
 test = "pytest -s -x --cov=chave_propria -vv"

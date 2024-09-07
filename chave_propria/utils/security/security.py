@@ -3,10 +3,10 @@ from http import HTTPStatus
 from typing import Dict
 from zoneinfo import ZoneInfo
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, Cookie, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from jwt import decode, encode
-from jwt.exceptions import ExpiredSignatureError
+from jwt.exceptions import ExpiredSignatureError, DecodeError
 from pwdlib import PasswordHash
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -74,7 +74,8 @@ def create_access_token(jwt_claims: Dict[str, str]) -> str:
 
 def get_current_user(
     session: Session = Depends(database_session),
-    token: str = Depends(oauth2_schema),
+    access_token=Cookie(),
+    # token: str = Depends(oauth2_schema),
 ) -> User:
     """
     Identifica o usuário após a autenticação
@@ -91,9 +92,15 @@ def get_current_user(
         detail='Não foi possível validar as credenciais',
         headers={'WWW-Authenticate': 'Bearer'},
     )
+
+    # token = request.cookies.get('access_token')
+
+    if not access_token:
+        raise creadential_exception
+
     try:
         payload: dict = decode(
-            token, Settings().SECRET_KEY, algorithms=[Settings().ALGORITHM]
+            access_token, Settings().SECRET_KEY, algorithms=[Settings().ALGORITHM]
         )
 
         # pega o username a partir do payload (decode do token recebido)
@@ -101,6 +108,8 @@ def get_current_user(
         if not username:
             raise creadential_exception
     except ExpiredSignatureError:
+        raise creadential_exception
+    except DecodeError:
         raise creadential_exception
 
     db_user = session.scalar(select(User).where(User.username == username))

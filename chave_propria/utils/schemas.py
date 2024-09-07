@@ -22,3 +22,13 @@ class UserPublic(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class UserInvite(BaseModel):
+    email: EmailStr
+
+
+class Invites(BaseModel):
+    id: int
+    email: str
+    status: str
