@@ -42,9 +42,9 @@ def login_for_access_token(
 
     access_token = create_access_token(jwt_claims={'sub': user.username})
 
-    # TODO: VERIFICAR PARA ADICIONAR COOKIE COM TOKEN JWT   
+    # TODO: VERIFICAR PARA ADICIONAR COOKIE COM TOKEN JWT
     response.set_cookie(
-        key="access_token",
+        key='access_token',
         value=access_token,
         httponly=True,
     )

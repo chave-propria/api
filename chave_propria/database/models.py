@@ -1,12 +1,17 @@
 from datetime import datetime
 from typing import Annotated
 
-from sqlalchemy import func, ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, registry
 
 table_registry = registry()
 
-T_UsersForeignKey = Annotated[Mapped[int], mapped_column(ForeignKey('user.id', ondelete='CASCADE'), init=True, primary_key=True)]
+T_UsersForeignKey = Annotated[
+    Mapped[int],
+    mapped_column(
+        ForeignKey('user.id', ondelete='CASCADE'), init=True, primary_key=True
+    ),
+]
 
 # Representa uma tabela no banco de dados
 @table_registry.mapped_as_dataclass
@@ -32,11 +37,16 @@ class Contatos:
     __tablename__ = 'contatos'
 
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'))
-    contato_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'))
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey('users.id', ondelete='CASCADE')
+    )
+    contato_id: Mapped[int] = mapped_column(
+        ForeignKey('users.id', ondelete='CASCADE')
+    )
     status: Mapped[str] = mapped_column(default='pending', init=False)
+    chat_id: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         nullable=False, init=False, server_default=func.now()
     )
 
-    UniqueConstraint('user_id', 'contato_id', name='user_contato_unique') 
+    UniqueConstraint('user_id', 'contato_id', name='user_contato_unique')

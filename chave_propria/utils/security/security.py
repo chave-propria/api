@@ -3,10 +3,10 @@ from http import HTTPStatus
 from typing import Dict
 from zoneinfo import ZoneInfo
 
-from fastapi import Depends, Cookie, HTTPException, Request
+from fastapi import Cookie, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from jwt import decode, encode
-from jwt.exceptions import ExpiredSignatureError, DecodeError
+from jwt.exceptions import DecodeError, ExpiredSignatureError
 from pwdlib import PasswordHash
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -95,12 +95,16 @@ def get_current_user(
 
     # token = request.cookies.get('access_token')
 
+    # print('\n\n OLHA AQUI => tentou autenticar\n')
+
     if not access_token:
         raise creadential_exception
 
     try:
         payload: dict = decode(
-            access_token, Settings().SECRET_KEY, algorithms=[Settings().ALGORITHM]
+            access_token,
+            Settings().SECRET_KEY,
+            algorithms=[Settings().ALGORITHM],
         )
 
         # pega o username a partir do payload (decode do token recebido)
@@ -108,8 +112,10 @@ def get_current_user(
         if not username:
             raise creadential_exception
     except ExpiredSignatureError:
+        # print("\n\n OLHA AQUI => Erro de assinatura expirada")
         raise creadential_exception
     except DecodeError:
+        # print("\n\n OLHA AQUI => Erro de decode")
         raise creadential_exception
 
     db_user = session.scalar(select(User).where(User.username == username))
