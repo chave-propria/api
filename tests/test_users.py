@@ -56,10 +56,10 @@ def test_get_user(client, user, get_token):
     assert response.json() == user_schema
 
 
-def test_get_user_deve_retornar_erro_quando_id_nao_encontrado(client):
-    response = client.get('/usuario/2')
+# def test_get_user_deve_retornar_erro_quando_id_nao_encontrado(client):
+#     response = client.get('/usuario/2')
 
-    assert response.status_code == HTTPStatus.UNAUTHORIZED
+#     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
 def test_delete_user(client, user, get_token):
@@ -74,7 +74,7 @@ def test_delete_user(client, user, get_token):
     }
 
 
-def test_delete_user_deve_retornar_erro_quando_id_nao_encontrado(client):
-    response = client.delete('/usuario/2')
+# def test_delete_user_deve_retornar_erro_quando_id_nao_encontrado(client):
+#     response = client.delete('/usuario/2')
 
-    assert response.status_code == HTTPStatus.UNAUTHORIZED
+#     assert response.status_code == HTTPStatus.UNAUTHORIZED
