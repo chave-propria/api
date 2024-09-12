@@ -31,4 +31,4 @@ class UserInvite(BaseModel):
 class Invites(BaseModel):
     id: int
     email: str
-    status: str
+    chat_id: str
