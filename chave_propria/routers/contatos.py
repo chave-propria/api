@@ -13,7 +13,6 @@ from chave_propria.utils.security.security import get_current_user
 
 contatos = APIRouter(prefix='/contatos', tags=['Contatos'])
 
-
 T_CurrentUser = Annotated[User, Depends(get_current_user)]
 T_Session = Annotated[Session, Depends(database_session)]
 
