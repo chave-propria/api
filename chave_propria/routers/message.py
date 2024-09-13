@@ -1,13 +1,13 @@
-from typing import Annotated, List, Tuple
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, status, Depends, WebSocket, WebSocketException, WebSocketDisconnect
 from sqlalchemy import select, union_all
 from sqlalchemy.orm import Session
 
 from chave_propria.database.database_connection import database_session
 from chave_propria.database.models import Contatos, User
 from chave_propria.utils.security.security import get_current_user
-from chave_propria.utils.WebSocket_ConnectionManager import manager
+from chave_propria.utils.websocket.Manager import manager
 
 message = APIRouter(prefix='/ws', tags=['Message'])
 
@@ -19,7 +19,10 @@ def busca_amigos(current_user_id: int, chat_id: str, session: Session):
     # Se o usuário atual é remetente
     sender_user = (
         select(User.username)
-        .join(Contatos, Contatos.contato_id == User.id)
+        .join(
+            Contatos,
+            Contatos.contato_id == User.id
+        )
         .where(
             Contatos.chat_id == chat_id,
             Contatos.user_id == current_user_id,
@@ -34,7 +37,8 @@ def busca_amigos(current_user_id: int, chat_id: str, session: Session):
             Contatos.user_id == User.id,
         )
         .where(
-            Contatos.chat_id == chat_id, Contatos.contato_id == current_user_id
+            Contatos.chat_id == chat_id,
+            Contatos.contato_id == current_user_id
         )
     )
 
@@ -43,6 +47,8 @@ def busca_amigos(current_user_id: int, chat_id: str, session: Session):
     recipient_username = session.execute(command).scalar()
 
     return recipient_username
+
+
 
 
 @message.websocket('/communicate/')
@@ -58,6 +64,12 @@ async def communicate(
         chat_id=chat_id,
         session=session,
     )
+
+    if not recipient_username:
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION,
+            reason='Não é possível enviar mensagem para o respectivo usuário!'
+        )
 
     print('Recebi uma conexão websocket')
 
