@@ -1,46 +1,95 @@
-from typing import Dict, List
+import asyncio
+import json
 
+import redis.asyncio as aioredis
 from fastapi import WebSocket, WebSocketException, status
+
+from chave_propria.settings.Settings import Settings
 
 
 class ConnectionManager:
     def __init__(self) -> None:
-        self.active_connections: Dict[str, List[Dict[str, WebSocket]]] = dict()
+        self.redis_client = aioredis.Redis(
+            host=Settings().REDIS_HOST,
+            port=Settings().REDIS_PORT,
+            db=Settings().REDIS_DB,
+        )
 
     async def connect(
-        self, websocket: WebSocket, chat_id: str, current_user: str
+        self,
+        websocket: WebSocket,
+        chat_id: str,
+        current_user: str,
     ) -> None:
-        # Evento de conexão
+        # Aceita conexão via WebSocket
         await websocket.accept()
 
-        # Adiciona usuário no chat
-        if chat_id not in self.active_connections:
-            self.active_connections = {chat_id: list()}
+        # Adiciona informação do usuário conectado
+        await self.redis_client.hset(
+            name=chat_id, mapping={current_user: 'connected'}
+        )
 
-        self.active_connections[chat_id].append({current_user: websocket})
+        pub_sub = self.redis_client.pubsub()
 
-    async def personal_message(self, chat_id: str, data: str, user: str):
-        # Enviar mensagem para usuário requerido `user`
-        recipient_user = {
-            user: connected_user.get(user)
-            for connected_user in self.active_connections.get(chat_id)
-            if user in connected_user.keys()
-        }
+        await pub_sub.subscribe(chat_id)
+
+        asyncio.create_task(
+            coro=self.subscriber(
+                subscribe=pub_sub,
+                websocket=websocket,
+                current_user=current_user,
+            )
+        )
+
+    async def publisher(self, chat_id: str, data: str, user_to_send: str):
+        # Busca usuário requerido
+        recipient_user = await self.redis_client.hget(
+            name=chat_id, key=user_to_send
+        )
+
+        # Se o usuário requerido não estiver conectado
+        print(recipient_user)
         if not recipient_user:
+            print('usuário não conectado')
             raise WebSocketException(
                 code=status.WS_1014_BAD_GATEWAY,
                 reason='O destinatário não está conectado no momento!',
             )
 
-        await recipient_user[user].send_text(data=data)
+        try:
+            # Publica a mensagem
+            await self.redis_client.publish(
+                channel=chat_id,
+                message=json.dumps(
+                    {
+                        'recipient': user_to_send,
+                        'text': data,
+                    }
+                ),
+            )
+        except Exception as e:
+            print(f'\n\nERRO PARA PUBLICAR NO CANAL: {e}\n')
 
-    async def broadcast(self, websocket: WebSocket, data: str):
-        # Envia mensagem via websocket
-        for _, connection in self.active_connections.items():
-            await connection.send_text(data=data)
+    async def subscriber(
+        self,
+        subscribe,
+        websocket: WebSocket,
+        current_user: str,
+        chat_id: str = None,
+    ) -> None:
+        while True:
+            message = await subscribe.get_message(
+                ignore_subscribe_messages=True,
+            )
+            if message:
+                data = json.loads(message['data'])
+                if data['recipient'] == current_user:
+                    await websocket.send_text(data=data['text'])
 
-    def close_connection(self, chat_id: str, user: str, websocket: WebSocket):
-        self.active_connections.pop(user)
+    async def close_connection(
+        self, chat_id: str, current_user: str, websocket: WebSocket
+    ):
+        await self.redis_client.hdel(chat_id, current_user)
 
 
 manager = ConnectionManager()

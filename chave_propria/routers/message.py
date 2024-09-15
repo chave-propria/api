@@ -1,6 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, status, Depends, WebSocket, WebSocketException, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+    status,
+)
 from sqlalchemy import select, union_all
 from sqlalchemy.orm import Session
 
@@ -19,10 +26,7 @@ def busca_amigos(current_user_id: int, chat_id: str, session: Session):
     # Se o usuário atual é remetente
     sender_user = (
         select(User.username)
-        .join(
-            Contatos,
-            Contatos.contato_id == User.id
-        )
+        .join(Contatos, Contatos.contato_id == User.id)
         .where(
             Contatos.chat_id == chat_id,
             Contatos.user_id == current_user_id,
@@ -37,8 +41,7 @@ def busca_amigos(current_user_id: int, chat_id: str, session: Session):
             Contatos.user_id == User.id,
         )
         .where(
-            Contatos.chat_id == chat_id,
-            Contatos.contato_id == current_user_id
+            Contatos.chat_id == chat_id, Contatos.contato_id == current_user_id
         )
     )
 
@@ -47,8 +50,6 @@ def busca_amigos(current_user_id: int, chat_id: str, session: Session):
     recipient_username = session.execute(command).scalar()
 
     return recipient_username
-
-
 
 
 @message.websocket('/communicate/')
@@ -68,13 +69,10 @@ async def communicate(
     if not recipient_username:
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION,
-            reason='Não é possível enviar mensagem para o respectivo usuário!'
+            reason='Não é possível enviar mensagem para o respectivo usuário!',
         )
 
-    print('Recebi uma conexão websocket')
-
-
-    # Ativa conexão com websocket
+    # Ativa conexão com websocket e com Redis PubSub
     await manager.connect(
         websocket=websocket,
         current_user=get_current_user.username,
@@ -84,13 +82,23 @@ async def communicate(
     try:
         while True:
             received_data = await websocket.receive_text()
-            print(
-                f'DADO RECEBIDO => {received_data} ENVIANDO PARA {recipient_username}'
-            )
-            await manager.personal_message(
-                chat_id=chat_id, data=received_data, user=recipient_username
+            # print(
+            #     f'DADO RECEBIDO => {received_data} ENVIANDO PARA {recipient_username}'
+            # )
+            await manager.publisher(
+                chat_id=chat_id,
+                data=received_data,
+                user_to_send=recipient_username,
             )
     except WebSocketDisconnect:
-        manager.close_connection(
-            websocket=websocket, user=get_current_user.username
+        await manager.close_connection(
+            websocket=websocket,
+            current_user=get_current_user.username,
+            chat_id=chat_id,
+        )
+    finally:
+        await manager.close_connection(
+            websocket=websocket,
+            current_user=get_current_user.username,
+            chat_id=chat_id,
         )
